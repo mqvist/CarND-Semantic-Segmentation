@@ -1,3 +1,4 @@
+import sys
 import os.path
 import tensorflow as tf
 import helper
@@ -62,15 +63,15 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     #input = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, strides=(1, 1))
     input = vgg_layer7_out
     # Upsample
-    input = tf.layers.conv2d_transpose(input, 512, 2, strides=(2, 2))
+    input = tf.layers.conv2d_transpose(input, 512, 2, strides=(2, 2), padding='same')
     # Add skip connection
     input = tf.add(input, vgg_layer4_out)
     # Upsample
-    input = tf.layers.conv2d_transpose(input, 256, 4, strides=(2, 2))
+    input = tf.layers.conv2d_transpose(input, 256, 4, strides=(2, 2), padding='same')
     # Add skip connection
     input = tf.add(input, vgg_layer3_out)
     # Final upsample
-    output = tf.layers.conv2d_transpose(input, num_classes, 16, strides=(8, 8))
+    output = tf.layers.conv2d_transpose(input, num_classes, 16, strides=(8, 8), padding='same')
     print('Final output shape', output.shape)
     return output
 tests.test_layers(layers)
@@ -112,14 +113,18 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     """
     # TODO: Implement function
     print('Training...')
+    tf.global_variables_initializer().run()
     for i in range(epochs):
+        print('Running EPOCH %d/%d' % (i + 1, epochs))
         for batch_x, batch_y in get_batches_fn(batch_size):
+            print('.', end='')
+            sys.stdout.flush()
             feed_dict = {input_image: batch_x,
                          correct_label: batch_y,
                          keep_prob: 0.5,
                          learning_rate: 0.001}
-            sess.run(train_op, feed_dict=feed_dict)
-        print(sess.run(cross_entropy_loss))
+            _, loss = sess.run([train_op, cross_entropy_loss], feed_dict=feed_dict)
+        print(' Loss =', loss)
             
 tests.test_train_nn(train_nn)
 
@@ -129,6 +134,8 @@ def run():
     image_shape = (160, 576)
     data_dir = './data'
     runs_dir = './runs'
+    epochs = 10
+    batch_size = 10
     tests.test_for_kitti_dataset(data_dir)
 
     # Download pretrained vgg model
@@ -157,11 +164,11 @@ def run():
 
         logits, train_op, cross_entropy_loss = optimize(last_layer, correct_label, learning_rate, num_classes)
         # TODO: Train NN using the train_nn function
-        train_nn(sess, 10, 100, get_batches_fn, train_op, cross_entropy_loss, image_input,
+        train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, image_input,
              correct_label, keep_prob, learning_rate)
 
         # TODO: Save inference data using helper.save_inference_samples
-        helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
+        helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, image_input)
 
         # OPTIONAL: Apply the trained model to a video
 
