@@ -60,8 +60,8 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     print('Layer 4 output shape', vgg_layer4_out.shape)
     print('Layer 7 output shape', vgg_layer7_out.shape)
     # Add 1-by-1 convolution layer
-    #input = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, strides=(1, 1))
-    input = vgg_layer7_out
+    input = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, strides=(1, 1))
+    #input = vgg_layer7_out
     # Upsample
     input = tf.layers.conv2d_transpose(input, 512, 2, strides=(2, 2), padding='same')
     # Add skip connection
@@ -112,19 +112,20 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     """
     # TODO: Implement function
-    print('Training...')
+    print('Training for %d epochs with batch size %d' % (epochs, batch_size))
+    epoch_learning_rate = 0.0001
+    epoch_learning_rate_decay = 0.5
     tf.global_variables_initializer().run()
     for i in range(epochs):
-        print('Running EPOCH %d/%d' % (i + 1, epochs))
-        for batch_x, batch_y in get_batches_fn(batch_size):
-            print('.', end='')
-            sys.stdout.flush()
+        print('Running epoch %d/%d with learning rate %f' % (i + 1, epochs, epoch_learning_rate))
+        for batch_no, (batch_x, batch_y) in enumerate(get_batches_fn(batch_size), 1):
             feed_dict = {input_image: batch_x,
                          correct_label: batch_y,
                          keep_prob: 0.5,
-                         learning_rate: 0.001}
+                         learning_rate: epoch_learning_rate}
             _, loss = sess.run([train_op, cross_entropy_loss], feed_dict=feed_dict)
-        print(' Loss =', loss)
+            print('Batch %d loss %f' % (batch_no, loss))
+        epoch_learning_rate *= epoch_learning_rate_decay
             
 tests.test_train_nn(train_nn)
 
@@ -134,8 +135,8 @@ def run():
     image_shape = (160, 576)
     data_dir = './data'
     runs_dir = './runs'
-    epochs = 10
-    batch_size = 10
+    epochs = 5
+    batch_size = 4
     tests.test_for_kitti_dataset(data_dir)
 
     # Download pretrained vgg model
